@@ -40,6 +40,16 @@ db.prepare(`
     email TEXT
   )
 `).run();
+// Tabla equipos
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS equipos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT,
+    serial TEXT,
+    area TEXT,
+    descripcion TEXT
+  )
+`).run();
 
 // Crear usuario admin si no existe
 const hashedPassword = bcrypt.hashSync("1234", 10);
@@ -106,9 +116,67 @@ function authMiddleware(req, res, next) {
 // RUTAS
 // =======================
 
-app.get("/admin", authMiddleware, (req, res) => {
-  res.sendFile(__dirname + "/public/dashboard.html");
+<h1>Panel de Administración</h1>
+
+<h2>Agregar Equipo</h2>
+
+<form id="formEquipo">
+  <input type="text" name="nombre" placeholder="Nombre equipo" required>
+  <input type="text" name="serial" placeholder="Serial" required>
+  <input type="text" name="area" placeholder="Área" required>
+  <input type="text" name="descripcion" placeholder="Descripción">
+  <button type="submit">Guardar</button>
+</form>
+
+<h2>Lista de Equipos</h2>
+<ul id="listaEquipos"></ul>
+
+<button onclick="logout()">Cerrar sesión</button>
+
+<script>
+async function cargarEquipos() {
+  const res = await fetch("/api/equipos");
+  const equipos = await res.json();
+
+  const lista = document.getElementById("listaEquipos");
+  lista.innerHTML = "";
+
+  equipos.forEach(e => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <strong>${e.nombre}</strong> - ${e.serial} - ${e.area}
+      <button onclick="eliminar(${e.id})">Eliminar</button>
+    `;
+    lista.appendChild(li);
+  });
+}
+
+document.getElementById("formEquipo").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const data = Object.fromEntries(new FormData(this));
+
+  await fetch("/api/equipos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  this.reset();
+  cargarEquipos();
 });
+
+async function eliminar(id) {
+  await fetch("/api/equipos/" + id, { method: "DELETE" });
+  cargarEquipos();
+}
+
+function logout() {
+  window.location.href = "/logout";
+}
+
+cargarEquipos();
+</script>
 
 app.get("/logout", (req, res) => {
   req.session.destroy();
@@ -141,6 +209,47 @@ app.get("/api/dashboard", authMiddleware, (req, res) => {
 // INICIAR SERVIDOR
 // =======================
 
+// Crear equipo
+app.post("/api/equipos", authMiddleware, (req, res) => {
+  try {
+    const { nombre, serial, area, descripcion } = req.body;
+
+    db.prepare(`
+      INSERT INTO equipos (nombre, serial, area, descripcion)
+      VALUES (?, ?, ?, ?)
+    `).run(nombre, serial, area, descripcion);
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error guardando equipo" });
+  }
+});
+
+// Obtener equipos
+app.get("/api/equipos", authMiddleware, (req, res) => {
+  try {
+    const equipos = db.prepare("SELECT * FROM equipos ORDER BY id DESC").all();
+    res.json(equipos);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error obteniendo equipos" });
+  }
+});
+// Eliminar equipo
+app.delete("/api/equipos/:id", authMiddleware, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    db.prepare("DELETE FROM equipos WHERE id = ?").run(id);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error eliminando equipo" });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
