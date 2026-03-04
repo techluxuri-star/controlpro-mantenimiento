@@ -20,10 +20,6 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: false }
 }));
-    resave: false,
-    saveUninitialized: true
-}));
-
 // Create tables
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
