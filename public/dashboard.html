@@ -35,5 +35,31 @@
 
 <p>Sistema básico listo para ampliar con reportes, calendario visual y control avanzado.</p>
 
+  <script>
+async function cargarDashboard() {
+  const res = await fetch("/api/dashboard");
+  const data = await res.json();
+
+  document.getElementById("totalServicios").innerText = data.totalServicios;
+  document.getElementById("totalClientes").innerText = data.totalClientes;
+  document.getElementById("totalIngresos").innerText = "$" + data.totalIngresos;
+
+  const tabla = document.getElementById("tablaServicios");
+  tabla.innerHTML = "";
+
+  data.ultimosServicios.forEach(servicio => {
+    tabla.innerHTML += `
+      <tr>
+        <td>${servicio.cliente}</td>
+        <td>${servicio.estado}</td>
+        <td>${servicio.fecha}</td>
+        <td>$${servicio.precio}</td>
+      </tr>
+    `;
+  });
+}
+
+cargarDashboard();
+</script>
 </body>
 </html>
