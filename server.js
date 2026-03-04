@@ -93,6 +93,28 @@ app.get("/logout", (req, res) => {
   req.session.destroy();
   res.redirect("/");
 });
+  app.get("/api/dashboard", authMiddleware, async (req, res) => {
+  try {
+
+    const totalServicios = await pool.query("SELECT COUNT(*) FROM servicios");
+    const totalClientes = await pool.query("SELECT COUNT(*) FROM clientes");
+    const totalIngresos = await pool.query("SELECT COALESCE(SUM(precio),0) FROM servicios");
+    const ultimosServicios = await pool.query(
+      "SELECT cliente, estado, fecha, precio FROM servicios ORDER BY fecha DESC LIMIT 5"
+    );
+
+    res.json({
+      totalServicios: totalServicios.rows[0].count,
+      totalClientes: totalClientes.rows[0].count,
+      totalIngresos: totalIngresos.rows[0].coalesce,
+      ultimosServicios: ultimosServicios.rows
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error cargando dashboard" });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
