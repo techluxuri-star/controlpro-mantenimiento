@@ -15,7 +15,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 app.use(session({
-    secret: "gradisur_secret",
+  secret: process.env.SESSION_SECRET || "gradisur_secret_dev",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false }
+}));
     resave: false,
     saveUninitialized: true
 }));
