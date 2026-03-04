@@ -96,19 +96,19 @@ app.get("/logout", (req, res) => {
   app.get("/api/dashboard", authMiddleware, async (req, res) => {
   try {
 
-    const totalServicios = await pool.query("SELECT COUNT(*) FROM servicios");
-    const totalClientes = await pool.query("SELECT COUNT(*) FROM clientes");
-    const totalIngresos = await pool.query("SELECT COALESCE(SUM(precio),0) FROM servicios");
-    const ultimosServicios = await pool.query(
-      "SELECT cliente, estado, fecha, precio FROM servicios ORDER BY fecha DESC LIMIT 5"
-    );
+    const totalServicios = db.prepare("SELECT COUNT(*) as count FROM servicios").get();
+const totalClientes = db.prepare("SELECT COUNT(*) as count FROM clientes").get();
+const totalIngresos = db.prepare("SELECT COALESCE(SUM(precio),0) as total FROM servicios").get();
+const ultimosServicios = db.prepare(
+  "SELECT cliente, estado, fecha, precio FROM servicios ORDER BY fecha DESC LIMIT 5"
+).all();
 
-    res.json({
-      totalServicios: totalServicios.rows[0].count,
-      totalClientes: totalClientes.rows[0].count,
-      totalIngresos: totalIngresos.rows[0].coalesce,
-      ultimosServicios: ultimosServicios.rows
-    });
+res.json({
+  totalServicios: totalServicios.count,
+  totalClientes: totalClientes.count,
+  totalIngresos: totalIngresos.total,
+  ultimosServicios: ultimosServicios
+});
 
   } catch (error) {
     console.error(error);
