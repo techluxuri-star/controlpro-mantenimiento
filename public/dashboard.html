@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard - GRADISUR</title>
+</head>
+<body>
+<h1>Sistema de Mantenimiento</h1>
+
+<h2>Agregar Equipo</h2>
+<form method="POST" action="/add-equipment">
+<input name="name" placeholder="Nombre equipo" required>
+<input name="serial" placeholder="Serial">
+<input name="area" placeholder="Área">
+<input name="description" placeholder="Descripción">
+<button type="submit">Guardar</button>
+</form>
+
+<h2>Registrar Acción / Retiro</h2>
+<form method="POST" action="/log-action" enctype="multipart/form-data">
+<input name="equipment_id" placeholder="ID Equipo" required>
+<input name="action" placeholder="Tipo acción (Retiro/Cambio/Mantenimiento)">
+<input name="notes" placeholder="Notas">
+<input type="file" name="photo">
+<button type="submit">Registrar</button>
+</form>
+
+<h2>Programar Mantenimiento</h2>
+<form method="POST" action="/schedule-maintenance">
+<input name="equipment_id" placeholder="ID Equipo" required>
+<input name="type" placeholder="Preventivo / Correctivo">
+<input type="date" name="date">
+<button type="submit">Programar</button>
+</form>
+
+<p>Sistema básico listo para ampliar con reportes, calendario visual y control avanzado.</p>
+
+</body>
+</html>
