@@ -48,6 +48,29 @@ db.prepare(`
   )
 `).run();
 
+// Tabla mantenimiento
+db.prepare(`
+CREATE TABLE IF NOT EXISTS mantenimientos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  equipo_id INTEGER,
+  fecha TEXT,
+  estado TEXT,
+  tecnico TEXT,
+  observacion TEXT
+)
+`).run();
+
+// Tabla asignaciones
+db.prepare(`
+CREATE TABLE IF NOT EXISTS asignaciones (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  equipo_id INTEGER,
+  area TEXT,
+  cantidad INTEGER,
+  fecha TEXT
+)
+`).run();
+
 // Crear admin si no existe
 const hashedPassword = bcrypt.hashSync("1234", 10);
 
