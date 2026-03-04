@@ -87,8 +87,7 @@ function authMiddleware(req, res, next) {
 }
 
 app.get("/admin", authMiddleware, (req, res) => {
-  res.sendFile(__dirname + "/public/admin.html");
-});
+  res.sendFile(__dirname + "/public/dashboard.html");
 
 app.get("/logout", (req, res) => {
   req.session.destroy();
