@@ -2,160 +2,298 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 const session = require("express-session");
+const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/* =========================
+BASE DE DATOS
+========================= */
+
 const db = new Database("database.db");
 
-// =======================
-// TABLAS
-// =======================
+/* USERS */
 
 db.prepare(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE,
-    password TEXT
-  )
-`).run();
-
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS servicios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente TEXT,
-    estado TEXT,
-    fecha TEXT,
-    precio REAL
-  )
-`).run();
-
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS clientes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT,
-    email TEXT
-  )
-`).run();
-
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS equipos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT,
-    serial TEXT,
-    area TEXT,
-    descripcion TEXT
-  )
-`).run();
-
-// Tabla mantenimiento
-db.prepare(`
-CREATE TABLE IF NOT EXISTS mantenimientos (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  equipo_id INTEGER,
-  fecha TEXT,
-  estado TEXT,
-  tecnico TEXT,
-  observacion TEXT
+CREATE TABLE IF NOT EXISTS users (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+username TEXT UNIQUE,
+password TEXT
 )
 `).run();
 
-// Tabla asignaciones
+/* CLIENTES */
+
 db.prepare(`
-CREATE TABLE IF NOT EXISTS asignaciones (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  equipo_id INTEGER,
-  area TEXT,
-  cantidad INTEGER,
-  fecha TEXT
+CREATE TABLE IF NOT EXISTS clientes (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+nombre TEXT,
+email TEXT,
+telefono TEXT
 )
 `).run();
 
-// Crear admin si no existe
-const hashedPassword = bcrypt.hashSync("1234", 10);
+/* EQUIPOS */
+
+db.prepare(`
+CREATE TABLE IF NOT EXISTS equipos (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+nombre TEXT,
+serial TEXT,
+area TEXT,
+descripcion TEXT,
+frecuencia_meses INTEGER DEFAULT 6,
+ultima_fecha TEXT
+)
+`).run();
+
+/* SERVICIOS */
+
+db.prepare(`
+CREATE TABLE IF NOT EXISTS servicios (
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+equipo_id INTEGER,
+cliente TEXT,
+estado TEXT,
+fecha TEXT,
+precio REAL
+)
+`).run();
+
+/* CREAR ADMIN */
+
+const password = bcrypt.hashSync("1234", 10);
 
 try {
-  db.prepare("INSERT INTO users (username, password) VALUES (?, ?)")
-    .run("admin", hashedPassword);
-} catch (err) {}
 
-// =======================
-// MIDDLEWARE
-// =======================
+db.prepare(`
+INSERT INTO users (username,password)
+VALUES (?,?)
+`).run("admin", password);
+
+console.log("ADMIN CREADO");
+
+} catch {
+console.log("ADMIN YA EXISTE");
+}
+
+/* =========================
+MIDDLEWARE
+========================= */
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({extended:true}));
+
 app.use(express.static("public"));
 
 app.use(session({
-  secret: "mi_secreto_super_seguro",
-  resave: false,
-  saveUninitialized: false
+secret:"controlpro123",
+resave:false,
+saveUninitialized:false
 }));
 
-function authMiddleware(req, res, next) {
-  if (req.session.user) next();
-  else res.redirect("/");
+/* =========================
+AUTH
+========================= */
+
+function auth(req,res,next){
+
+if(req.session.user){
+
+next();
+
+}else{
+
+res.redirect("/");
+
 }
 
-// =======================
-// LOGIN
-// =======================
+}
 
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
+/* =========================
+LOGIN
+========================= */
 
-  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+app.post("/login",(req,res)=>{
 
-  if (!user) return res.send("Usuario no encontrado");
+const {username,password} = req.body;
 
-  const valid = bcrypt.compareSync(password, user.password);
-  if (!valid) return res.send("Contraseña incorrecta");
+const user = db.prepare(`
+SELECT * FROM users WHERE username = ?
+`).get(username);
 
-  req.session.user = user.username;
-  res.redirect("/admin");
+if(!user){
+
+return res.send("Usuario no existe");
+
+}
+
+const valid = bcrypt.compareSync(password,user.password);
+
+if(!valid){
+
+return res.send("Contraseña incorrecta");
+
+}
+
+req.session.user = user.username;
+
+res.redirect("/dashboard.html");
+
 });
 
-// =======================
-// RUTAS
-// =======================
+/* =========================
+LOGOUT
+========================= */
 
-app.get("/admin", authMiddleware, (req, res) => {
-  res.sendFile(__dirname + "/public/dashboard.html");
+app.get("/logout",(req,res)=>{
+
+req.session.destroy();
+
+res.redirect("/");
+
 });
 
-app.get("/logout", (req, res) => {
-  req.session.destroy();
-  res.redirect("/");
+/* =========================
+EQUIPOS
+========================= */
+
+app.get("/api/equipos",auth,(req,res)=>{
+
+const data = db.prepare(`
+SELECT * FROM equipos ORDER BY id DESC
+`).all();
+
+res.json(data);
+
 });
 
-// API EQUIPOS
 
-app.post("/api/equipos", authMiddleware, (req, res) => {
-  const { nombre, serial, area, descripcion } = req.body;
+app.post("/api/equipos",auth,(req,res)=>{
 
-  db.prepare(`
-    INSERT INTO equipos (nombre, serial, area, descripcion)
-    VALUES (?, ?, ?, ?)
-  `).run(nombre, serial, area, descripcion);
+const {nombre,serial,area,descripcion,frecuencia_meses} = req.body;
 
-  res.json({ success: true });
+db.prepare(`
+INSERT INTO equipos
+(nombre,serial,area,descripcion,frecuencia_meses,ultima_fecha)
+VALUES (?,?,?,?,?,date('now'))
+`).run(nombre,serial,area,descripcion,frecuencia_meses);
+
+res.json({ok:true});
+
 });
 
-app.get("/api/equipos", authMiddleware, (req, res) => {
-  const equipos = db.prepare("SELECT * FROM equipos ORDER BY id DESC").all();
-  res.json(equipos);
+
+app.delete("/api/equipos/:id",auth,(req,res)=>{
+
+db.prepare(`
+DELETE FROM equipos WHERE id=?
+`).run(req.params.id);
+
+res.json({ok:true});
+
 });
 
-app.delete("/api/equipos/:id", authMiddleware, (req, res) => {
-  db.prepare("DELETE FROM equipos WHERE id = ?").run(req.params.id);
-  res.json({ success: true });
+/* =========================
+CLIENTES
+========================= */
+
+app.get("/api/clientes",auth,(req,res)=>{
+
+const data = db.prepare(`
+SELECT * FROM clientes
+`).all();
+
+res.json(data);
+
 });
 
-// =======================
-// SERVIDOR
-// =======================
+app.post("/api/clientes",auth,(req,res)=>{
 
-app.listen(PORT, () => {
-  console.log("Servidor corriendo en puerto " + PORT);
+const {nombre,email,telefono} = req.body;
+
+db.prepare(`
+INSERT INTO clientes
+(nombre,email,telefono)
+VALUES (?,?,?)
+`).run(nombre,email,telefono);
+
+res.json({ok:true});
+
+});
+
+/* =========================
+SERVICIOS
+========================= */
+
+app.get("/api/servicios",auth,(req,res)=>{
+
+const data = db.prepare(`
+SELECT * FROM servicios
+ORDER BY fecha DESC
+`).all();
+
+res.json(data);
+
+});
+
+app.post("/api/servicios",auth,(req,res)=>{
+
+const {equipo_id,cliente,estado,fecha,precio} = req.body;
+
+db.prepare(`
+INSERT INTO servicios
+(equipo_id,cliente,estado,fecha,precio)
+VALUES (?,?,?,?,?)
+`).run(equipo_id,cliente,estado,fecha,precio);
+
+res.json({ok:true});
+
+});
+
+/* =========================
+DASHBOARD
+========================= */
+
+app.get("/api/dashboard",auth,(req,res)=>{
+
+const equipos = db.prepare(`
+SELECT COUNT(*) total FROM equipos
+`).get();
+
+const clientes = db.prepare(`
+SELECT COUNT(*) total FROM clientes
+`).get();
+
+const ingresos = db.prepare(`
+SELECT COALESCE(SUM(precio),0) total FROM servicios
+`).get();
+
+const ultimos = db.prepare(`
+SELECT cliente,estado,fecha,precio
+FROM servicios
+ORDER BY fecha DESC
+LIMIT 5
+`).all();
+
+res.json({
+
+equipos:equipos.total,
+clientes:clientes.total,
+ingresos:ingresos.total,
+ultimos
+
+});
+
+});
+
+/* =========================
+SERVER
+========================= */
+
+app.listen(PORT,()=>{
+
+console.log("Servidor funcionando puerto "+PORT);
+
 });
