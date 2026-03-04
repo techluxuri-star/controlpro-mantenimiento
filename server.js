@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
-
+const session = require("express-session");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -33,6 +33,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+app.use(session({
+  secret: "mi_secreto_super_seguro",
+  resave: false,
+  saveUninitialized: false
+}));
 // Ruta login
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
@@ -50,10 +55,30 @@ app.post("/login", (req, res) => {
     return res.send("Contraseña incorrecta");
   }
 
-  res.send("Login correcto 🚀");
+  req.session.user = user.username;
+res.redirect("/admin");
 });
 
 // Iniciar servidor
+function authMiddleware(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect("/");
+  }
+  next();
+}
+
+app.get("/admin", authMiddleware, (req, res) => {
+  res.send(`
+    <h1>Panel Administrativo</h1>
+    <p>Bienvenido ${req.session.user}</p>
+    <a href="/logout">Cerrar sesión</a>
+  `);
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/");
+});
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
