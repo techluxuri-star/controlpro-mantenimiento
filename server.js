@@ -2,13 +2,17 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const Database = require("better-sqlite3");
 const session = require("express-session");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Base de datos
+// =======================
+// BASE DE DATOS
+// =======================
+
 const db = new Database("database.db");
 
-// Crear tabla si no existe
+// Tabla usuarios
 db.prepare(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -16,7 +20,8 @@ db.prepare(`
     password TEXT
   )
 `).run();
-// Crear tabla servicios si no existe
+
+// Tabla servicios
 db.prepare(`
   CREATE TABLE IF NOT EXISTS servicios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +32,7 @@ db.prepare(`
   )
 `).run();
 
-// Crear tabla clientes si no existe
+// Tabla clientes
 db.prepare(`
   CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,10 +49,13 @@ try {
     .run("admin", hashedPassword);
   console.log("Usuario admin creado");
 } catch (err) {
-  console.log("El usuario ya existe");
+  console.log("El usuario admin ya existe");
 }
 
-// Middleware
+// =======================
+// MIDDLEWARE
+// =======================
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
@@ -57,7 +65,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false
 }));
-// Ruta login
+
+// =======================
+// LOGIN
+// =======================
+
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
 
@@ -75,46 +87,60 @@ app.post("/login", (req, res) => {
   }
 
   req.session.user = user.username;
-res.redirect("/admin");
+  res.redirect("/admin");
 });
 
-// Iniciar servidor
+// =======================
+// AUTH MIDDLEWARE
+// =======================
+
 function authMiddleware(req, res, next) {
-  if (!req.session.user) {
-    return res.redirect("/");
+  if (req.session.user) {
+    next();
+  } else {
+    res.redirect("/");
   }
-  next();
 }
+
+// =======================
+// RUTAS
+// =======================
 
 app.get("/admin", authMiddleware, (req, res) => {
   res.sendFile(__dirname + "/public/dashboard.html");
+});
 
 app.get("/logout", (req, res) => {
   req.session.destroy();
   res.redirect("/");
 });
-  app.get("/api/dashboard", authMiddleware, async (req, res) => {
+
+app.get("/api/dashboard", authMiddleware, (req, res) => {
   try {
-
     const totalServicios = db.prepare("SELECT COUNT(*) as count FROM servicios").get();
-const totalClientes = db.prepare("SELECT COUNT(*) as count FROM clientes").get();
-const totalIngresos = db.prepare("SELECT COALESCE(SUM(precio),0) as total FROM servicios").get();
-const ultimosServicios = db.prepare(
-  "SELECT cliente, estado, fecha, precio FROM servicios ORDER BY fecha DESC LIMIT 5"
-).all();
+    const totalClientes = db.prepare("SELECT COUNT(*) as count FROM clientes").get();
+    const totalIngresos = db.prepare("SELECT COALESCE(SUM(precio),0) as total FROM servicios").get();
+    const ultimosServicios = db.prepare(
+      "SELECT cliente, estado, fecha, precio FROM servicios ORDER BY fecha DESC LIMIT 5"
+    ).all();
 
-res.json({
-  totalServicios: totalServicios.count,
-  totalClientes: totalClientes.count,
-  totalIngresos: totalIngresos.total,
-  ultimosServicios: ultimosServicios
-});
+    res.json({
+      totalServicios: totalServicios.count,
+      totalClientes: totalClientes.count,
+      totalIngresos: totalIngresos.total,
+      ultimosServicios: ultimosServicios
+    });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error cargando dashboard" });
   }
 });
+
+// =======================
+// INICIAR SERVIDOR
+// =======================
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
