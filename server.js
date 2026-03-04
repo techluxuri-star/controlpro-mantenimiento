@@ -72,59 +72,167 @@ app.get("/admin", authMiddleware, (req, res) => {
   <!DOCTYPE html>
   <html>
   <head>
-    <title>Panel Administrativo</title>
+    <title>Dashboard Admin</title>
     <style>
-      body {
+      * {
         margin: 0;
+        padding: 0;
+        box-sizing: border-box;
         font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, #1e3c72, #2a5298);
+      }
+
+      body {
         display: flex;
-        justify-content: center;
-        align-items: center;
         height: 100vh;
+        background: #f4f6f9;
+      }
+
+      .sidebar {
+        width: 250px;
+        background: #1e293b;
         color: white;
+        padding: 20px;
       }
 
-      .card {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 40px;
-        border-radius: 15px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        text-align: center;
-        width: 350px;
+      .sidebar h2 {
+        margin-bottom: 30px;
       }
 
-      h1 {
-        margin-bottom: 10px;
-      }
-
-      p {
-        margin-bottom: 25px;
-        font-size: 18px;
-      }
-
-      a {
-        display: inline-block;
-        padding: 10px 20px;
-        background: #ff4b2b;
+      .sidebar a {
+        display: block;
         color: white;
         text-decoration: none;
-        border-radius: 8px;
+        margin: 15px 0;
+        padding: 10px;
+        border-radius: 6px;
         transition: 0.3s;
       }
 
-      a:hover {
-        background: #ff416c;
+      .sidebar a:hover {
+        background: #334155;
+      }
+
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: white;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      }
+
+      .cards {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+      }
+
+      .card {
+        flex: 1;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      }
+
+      .table-container {
+        padding: 20px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      th, td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+
+      th {
+        background: #f1f5f9;
+      }
+
+      .logout {
+        background: #ef4444;
+        color: white;
+        padding: 8px 15px;
+        border-radius: 6px;
+        text-decoration: none;
+      }
+
+      .logout:hover {
+        background: #dc2626;
       }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>Panel Administrativo</h1>
-      <p>Bienvenido <strong>${req.session.user}</strong></p>
-      <a href="/logout">Cerrar sesión</a>
+
+    <div class="sidebar">
+      <h2>ControlPro</h2>
+      <a href="#">Dashboard</a>
+      <a href="#">Servicios</a>
+      <a href="#">Usuarios</a>
+      <a href="#">Configuración</a>
     </div>
+
+    <div class="main">
+      <div class="header">
+        <h3>Bienvenido ${req.session.user}</h3>
+        <a class="logout" href="/logout">Cerrar sesión</a>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <h4>Servicios</h4>
+          <p>12 activos</p>
+        </div>
+        <div class="card">
+          <h4>Clientes</h4>
+          <p>8 registrados</p>
+        </div>
+        <div class="card">
+          <h4>Ingresos</h4>
+          <p>$2,450</p>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <h3>Últimos Servicios</h3>
+        <table>
+          <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+          <tr>
+            <td>1</td>
+            <td>Juan Pérez</td>
+            <td>En proceso</td>
+            <td>03/06/2026</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>María López</td>
+            <td>Finalizado</td>
+            <td>02/06/2026</td>
+          </tr>
+        </table>
+      </div>
+
+    </div>
+
   </body>
   </html>
   `);
