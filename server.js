@@ -69,9 +69,64 @@ function authMiddleware(req, res, next) {
 
 app.get("/admin", authMiddleware, (req, res) => {
   res.send(`
-    <h1>Panel Administrativo</h1>
-    <p>Bienvenido ${req.session.user}</p>
-    <a href="/logout">Cerrar sesión</a>
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Panel Administrativo</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        color: white;
+      }
+
+      .card {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 40px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        text-align: center;
+        width: 350px;
+      }
+
+      h1 {
+        margin-bottom: 10px;
+      }
+
+      p {
+        margin-bottom: 25px;
+        font-size: 18px;
+      }
+
+      a {
+        display: inline-block;
+        padding: 10px 20px;
+        background: #ff4b2b;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        transition: 0.3s;
+      }
+
+      a:hover {
+        background: #ff416c;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Panel Administrativo</h1>
+      <p>Bienvenido <strong>${req.session.user}</strong></p>
+      <a href="/logout">Cerrar sesión</a>
+    </div>
+  </body>
+  </html>
   `);
 });
 
