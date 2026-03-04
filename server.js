@@ -87,19 +87,7 @@ function authMiddleware(req, res, next) {
 }
 
 app.get("/admin", authMiddleware, (req, res) => {
-
-  const totalServicios = db.prepare("SELECT COUNT(*) as total FROM servicios").get().total;
-  const totalClientes = db.prepare("SELECT COUNT(*) as total FROM clientes").get().total;
-  const totalIngresos = db.prepare("SELECT SUM(precio) as total FROM servicios").get().total || 0;
-
-  const ultimosServicios = db.prepare("SELECT * FROM servicios ORDER BY id DESC LIMIT 5").all();
-
-  res.send(`
-  
-  <!-- AQUÍ VA TODO TU HTML DEL DASHBOARD -->
-
-  `);
-
+  res.sendFile(__dirname + "/public/admin.html");
 });
 
 app.get("/logout", (req, res) => {
