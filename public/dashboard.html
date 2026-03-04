@@ -1,65 +1,73 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-<title>Dashboard - GRADISUR</title>
+  <meta charset="UTF-8">
+  <title>Panel de Administración</title>
 </head>
 <body>
-<h1>Sistema de Mantenimiento</h1>
+
+<h1>Panel de Administración</h1>
 
 <h2>Agregar Equipo</h2>
-<form method="POST" action="/add-equipment">
-<input name="name" placeholder="Nombre equipo" required>
-<input name="serial" placeholder="Serial">
-<input name="area" placeholder="Área">
-<input name="description" placeholder="Descripción">
-<button type="submit">Guardar</button>
+
+<form id="formEquipo">
+  <input type="text" name="nombre" placeholder="Nombre equipo" required>
+  <input type="text" name="serial" placeholder="Serial" required>
+  <input type="text" name="area" placeholder="Área" required>
+  <input type="text" name="descripcion" placeholder="Descripción">
+  <button type="submit">Guardar</button>
 </form>
 
-<h2>Registrar Acción / Retiro</h2>
-<form method="POST" action="/log-action" enctype="multipart/form-data">
-<input name="equipment_id" placeholder="ID Equipo" required>
-<input name="action" placeholder="Tipo acción (Retiro/Cambio/Mantenimiento)">
-<input name="notes" placeholder="Notas">
-<input type="file" name="photo">
-<button type="submit">Registrar</button>
-</form>
+<h2>Lista de Equipos</h2>
+<ul id="listaEquipos"></ul>
 
-<h2>Programar Mantenimiento</h2>
-<form method="POST" action="/schedule-maintenance">
-<input name="equipment_id" placeholder="ID Equipo" required>
-<input name="type" placeholder="Preventivo / Correctivo">
-<input type="date" name="date">
-<button type="submit">Programar</button>
-</form>
+<br>
+<button onclick="logout()">Cerrar sesión</button>
 
-<p>Sistema básico listo para ampliar con reportes, calendario visual y control avanzado.</p>
+<script>
+async function cargarEquipos() {
+  const res = await fetch("/api/equipos");
+  const equipos = await res.json();
 
-  <script>
-async function cargarDashboard() {
-  const res = await fetch("/api/dashboard");
-  const data = await res.json();
+  const lista = document.getElementById("listaEquipos");
+  lista.innerHTML = "";
 
-  document.getElementById("totalServicios").innerText = data.totalServicios;
-  document.getElementById("totalClientes").innerText = data.totalClientes;
-  document.getElementById("totalIngresos").innerText = "$" + data.totalIngresos;
-
-  const tabla = document.getElementById("tablaServicios");
-  tabla.innerHTML = "";
-
-  data.ultimosServicios.forEach(servicio => {
-    tabla.innerHTML += `
-      <tr>
-        <td>${servicio.cliente}</td>
-        <td>${servicio.estado}</td>
-        <td>${servicio.fecha}</td>
-        <td>$${servicio.precio}</td>
-      </tr>
+  equipos.forEach(e => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <strong>${e.nombre}</strong> - ${e.serial} - ${e.area}
+      <button onclick="eliminar(${e.id})">Eliminar</button>
     `;
+    lista.appendChild(li);
   });
 }
 
-cargarDashboard();
+document.getElementById("formEquipo").addEventListener("submit", async function(e) {
+  e.preventDefault();
+
+  const data = Object.fromEntries(new FormData(this));
+
+  await fetch("/api/equipos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  this.reset();
+  cargarEquipos();
+});
+
+async function eliminar(id) {
+  await fetch("/api/equipos/" + id, { method: "DELETE" });
+  cargarEquipos();
+}
+
+function logout() {
+  window.location.href = "/logout";
+}
+
+cargarEquipos();
 </script>
+
 </body>
 </html>
