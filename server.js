@@ -7,14 +7,13 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-/* =========================
-BASE DE DATOS
-========================= */
+// =========================
+// BASE DE DATOS
+// =========================
 
 const db = new Database("database.db");
 
-/* USERS */
-
+// Usuarios
 db.prepare(`
 CREATE TABLE IF NOT EXISTS users (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,8 +22,7 @@ password TEXT
 )
 `).run();
 
-/* CLIENTES */
-
+// Clientes
 db.prepare(`
 CREATE TABLE IF NOT EXISTS clientes (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,184 +32,179 @@ telefono TEXT
 )
 `).run();
 
-/* EQUIPOS */
-
+// Equipos
 db.prepare(`
 CREATE TABLE IF NOT EXISTS equipos (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 nombre TEXT,
 serial TEXT,
+marca TEXT,
 area TEXT,
 descripcion TEXT,
-frecuencia_meses INTEGER DEFAULT 6,
-ultima_fecha TEXT
+frecuencia INTEGER
 )
 `).run();
 
-/* SERVICIOS */
-
+// Mantenimientos
 db.prepare(`
-CREATE TABLE IF NOT EXISTS servicios (
+CREATE TABLE IF NOT EXISTS mantenimientos (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 equipo_id INTEGER,
-cliente TEXT,
+fecha_programada TEXT,
+fecha_realizada TEXT,
 estado TEXT,
-fecha TEXT,
-precio REAL
+observaciones TEXT
 )
 `).run();
 
-/* CREAR ADMIN */
+// =========================
+// CREAR ADMIN
+// =========================
 
-const password = bcrypt.hashSync("1234", 10);
+const hashedPassword = bcrypt.hashSync("1234", 10);
 
 try {
-
-db.prepare(`
-INSERT INTO users (username,password)
-VALUES (?,?)
-`).run("admin", password);
-
-console.log("ADMIN CREADO");
-
+db.prepare("INSERT INTO users (username,password) VALUES (?,?)")
+.run("admin", hashedPassword);
+console.log("Admin creado");
 } catch {
-console.log("ADMIN YA EXISTE");
+console.log("Admin ya existe");
 }
 
-/* =========================
-MIDDLEWARE
-========================= */
+// =========================
+// MIDDLEWARE
+// =========================
 
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
-
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 app.use(session({
-secret:"controlpro123",
-resave:false,
-saveUninitialized:false
+secret: "controlpro_secret",
+resave: false,
+saveUninitialized: false
 }));
 
-/* =========================
-AUTH
-========================= */
+// =========================
+// AUTH
+// =========================
 
 function auth(req,res,next){
-
 if(req.session.user){
-
 next();
-
 }else{
-
 res.redirect("/");
-
+}
 }
 
-}
-
-/* =========================
-LOGIN
-========================= */
+// =========================
+// LOGIN
+// =========================
 
 app.post("/login",(req,res)=>{
 
-const {username,password} = req.body;
+const {username,password}=req.body;
 
-const user = db.prepare(`
-SELECT * FROM users WHERE username = ?
-`).get(username);
+const user=db.prepare("SELECT * FROM users WHERE username=?")
+.get(username);
 
 if(!user){
-
-return res.send("Usuario no existe");
-
+return res.send("Usuario no encontrado");
 }
 
-const valid = bcrypt.compareSync(password,user.password);
+const valid=bcrypt.compareSync(password,user.password);
 
 if(!valid){
-
 return res.send("Contraseña incorrecta");
-
 }
 
-req.session.user = user.username;
+req.session.user=user.username;
 
-res.redirect("/dashboard.html");
-
-});
-
-/* =========================
-LOGOUT
-========================= */
-
-app.get("/logout",(req,res)=>{
-
-req.session.destroy();
-
-res.redirect("/");
+res.redirect("/admin");
 
 });
 
-/* =========================
-EQUIPOS
-========================= */
+// =========================
+// PANEL
+// =========================
 
+app.get("/admin",auth,(req,res)=>{
+res.sendFile(path.join(__dirname,"public","dashboard.html"));
+});
+
+// =========================
+// DASHBOARD API
+// =========================
+
+app.get("/api/dashboard",auth,(req,res)=>{
+
+const equipos=db.prepare("SELECT COUNT(*) as total FROM equipos").get();
+const clientes=db.prepare("SELECT COUNT(*) as total FROM clientes").get();
+const mantenimientos=db.prepare("SELECT COUNT(*) as total FROM mantenimientos").get();
+
+res.json({
+equipos:equipos.total,
+clientes:clientes.total,
+mantenimientos:mantenimientos.total
+});
+
+});
+
+// =========================
+// EQUIPOS
+// =========================
+
+// obtener equipos
 app.get("/api/equipos",auth,(req,res)=>{
 
-const data = db.prepare(`
-SELECT * FROM equipos ORDER BY id DESC
-`).all();
+const data=db.prepare("SELECT * FROM equipos ORDER BY id DESC").all();
 
 res.json(data);
 
 });
 
-
+// crear equipo
 app.post("/api/equipos",auth,(req,res)=>{
 
-const {nombre,serial,area,descripcion,frecuencia_meses} = req.body;
+const {nombre,serial,marca,area,descripcion,frecuencia}=req.body;
 
 db.prepare(`
 INSERT INTO equipos
-(nombre,serial,area,descripcion,frecuencia_meses,ultima_fecha)
-VALUES (?,?,?,?,?,date('now'))
-`).run(nombre,serial,area,descripcion,frecuencia_meses);
+(nombre,serial,marca,area,descripcion,frecuencia)
+VALUES (?,?,?,?,?,?)
+`).run(nombre,serial,marca,area,descripcion,frecuencia);
 
 res.json({ok:true});
 
 });
 
-
+// eliminar equipo
 app.delete("/api/equipos/:id",auth,(req,res)=>{
 
-db.prepare(`
-DELETE FROM equipos WHERE id=?
-`).run(req.params.id);
+db.prepare("DELETE FROM equipos WHERE id=?")
+.run(req.params.id);
 
 res.json({ok:true});
 
 });
 
-/* =========================
-CLIENTES
-========================= */
+// =========================
+// CLIENTES
+// =========================
 
+// obtener clientes
 app.get("/api/clientes",auth,(req,res)=>{
 
-const data = db.prepare(`
-SELECT * FROM clientes
-`).all();
+const data=db.prepare("SELECT * FROM clientes").all();
 
 res.json(data);
 
 });
 
+// crear cliente
 app.post("/api/clientes",auth,(req,res)=>{
 
-const {nombre,email,telefono} = req.body;
+const {nombre,email,telefono}=req.body;
 
 db.prepare(`
 INSERT INTO clientes
@@ -223,77 +216,56 @@ res.json({ok:true});
 
 });
 
-/* =========================
-SERVICIOS
-========================= */
+// =========================
+// MANTENIMIENTOS
+// =========================
 
-app.get("/api/servicios",auth,(req,res)=>{
+// programar mantenimiento
+app.post("/api/mantenimiento",auth,(req,res)=>{
 
-const data = db.prepare(`
-SELECT * FROM servicios
-ORDER BY fecha DESC
-`).all();
-
-res.json(data);
-
-});
-
-app.post("/api/servicios",auth,(req,res)=>{
-
-const {equipo_id,cliente,estado,fecha,precio} = req.body;
+const {equipo_id,fecha}=req.body;
 
 db.prepare(`
-INSERT INTO servicios
-(equipo_id,cliente,estado,fecha,precio)
-VALUES (?,?,?,?,?)
-`).run(equipo_id,cliente,estado,fecha,precio);
+INSERT INTO mantenimientos
+(equipo_id,fecha_programada,estado)
+VALUES (?,?,?)
+`).run(equipo_id,fecha,"programado");
 
 res.json({ok:true});
 
 });
 
-/* =========================
-DASHBOARD
-========================= */
+// historial mantenimiento
+app.get("/api/mantenimiento/:id",auth,(req,res)=>{
 
-app.get("/api/dashboard",auth,(req,res)=>{
+const data=db.prepare(`
+SELECT * FROM mantenimientos
+WHERE equipo_id=?
+ORDER BY fecha_programada DESC
+`).all(req.params.id);
 
-const equipos = db.prepare(`
-SELECT COUNT(*) total FROM equipos
-`).get();
-
-const clientes = db.prepare(`
-SELECT COUNT(*) total FROM clientes
-`).get();
-
-const ingresos = db.prepare(`
-SELECT COALESCE(SUM(precio),0) total FROM servicios
-`).get();
-
-const ultimos = db.prepare(`
-SELECT cliente,estado,fecha,precio
-FROM servicios
-ORDER BY fecha DESC
-LIMIT 5
-`).all();
-
-res.json({
-
-equipos:equipos.total,
-clientes:clientes.total,
-ingresos:ingresos.total,
-ultimos
+res.json(data);
 
 });
 
+// =========================
+// LOGOUT
+// =========================
+
+app.get("/logout",(req,res)=>{
+
+req.session.destroy();
+
+res.redirect("/");
+
 });
 
-/* =========================
-SERVER
-========================= */
+// =========================
+// SERVIDOR
+// =========================
 
 app.listen(PORT,()=>{
 
-console.log("Servidor funcionando puerto "+PORT);
+console.log("Servidor corriendo en puerto "+PORT);
 
 });
