@@ -1,214 +1,130 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Panel de Administración</title>
+const express = require("express");
+const sqlite3 = require("sqlite3").verbose();
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const path = require("path");
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(bodyParser.json());
+app.use(express.static("public"));
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+const db = new sqlite3.Database("./database.db");
 
-<style>
+db.serialize(() => {
 
-body{
-background:#f4f6f9;
-}
+db.run(`
+CREATE TABLE IF NOT EXISTS equipos(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+nombre TEXT,
+serial TEXT,
+area TEXT,
+descripcion TEXT,
+estado TEXT
+)
+`);
 
-.navbar{
-background:#0d6efd;
-}
+db.run(`
+CREATE TABLE IF NOT EXISTS empleados(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+nombre TEXT,
+cargo TEXT,
+area TEXT
+)
+`);
 
-.card{
-box-shadow:0 2px 10px rgba(0,0,0,0.1);
-border:none;
-}
+db.run(`
+CREATE TABLE IF NOT EXISTS asignaciones(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+equipo_id INTEGER,
+empleado_id INTEGER,
+fecha TEXT
+)
+`);
 
-</style>
+db.run(`
+CREATE TABLE IF NOT EXISTS mantenimientos(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+equipo_id INTEGER,
+tipo TEXT,
+descripcion TEXT,
+fecha TEXT
+)
+`);
 
-</head>
+});
 
-<body>
 
-<nav class="navbar navbar-dark">
-<div class="container-fluid">
+// EQUIPOS
 
-<span class="navbar-brand mb-0 h1">
-ControlPro - Mantenimiento
-</span>
+app.get("/equipos",(req,res)=>{
+db.all("SELECT * FROM equipos",(err,rows)=>{
+res.json(rows);
+});
+});
 
-<button onclick="logout()" class="btn btn-light">
-Cerrar sesión
-</button>
+app.post("/equipos",(req,res)=>{
+const {nombre,serial,area,descripcion}=req.body;
 
-</div>
-</nav>
+db.run(
+`INSERT INTO equipos(nombre,serial,area,descripcion,estado)
+VALUES(?,?,?,?,?)`,
+[nombre,serial,area,descripcion,"Activo"]
+);
 
+res.json({mensaje:"Equipo creado"});
+});
 
-<div class="container mt-4">
+app.delete("/equipos/:id",(req,res)=>{
+db.run("DELETE FROM equipos WHERE id=?",[req.params.id]);
+res.json({mensaje:"Equipo eliminado"});
+});
 
-<div class="row">
 
-<div class="col-md-4">
+// MANTENIMIENTO
 
-<div class="card p-3">
+app.post("/mantenimiento",(req,res)=>{
 
-<h5>Agregar Equipo</h5>
+const {equipo_id,tipo,descripcion,fecha}=req.body;
 
-<input id="nombre" class="form-control mb-2" placeholder="Nombre equipo">
+db.run(
+`INSERT INTO mantenimientos(equipo_id,tipo,descripcion,fecha)
+VALUES(?,?,?,?)`,
+[equipo_id,tipo,descripcion,fecha]
+);
 
-<input id="serial" class="form-control mb-2" placeholder="Serial">
+res.json({mensaje:"Mantenimiento registrado"});
+});
 
-<input id="area" class="form-control mb-2" placeholder="Área">
+app.get("/mantenimiento",(req,res)=>{
 
-<input id="descripcion" class="form-control mb-2" placeholder="Descripción">
+db.all("SELECT * FROM mantenimientos",(err,rows)=>{
+res.json(rows);
+});
 
-<button onclick="agregarEquipo()" class="btn btn-primary w-100">
-Guardar Equipo
-</button>
+});
 
-</div>
 
-</div>
+// ASIGNACION
 
+app.post("/asignar",(req,res)=>{
 
-<div class="col-md-8">
+const {equipo_id,empleado_id,fecha}=req.body;
 
-<div class="card p-3">
+db.run(
+`INSERT INTO asignaciones(equipo_id,empleado_id,fecha)
+VALUES(?,?,?)`,
+[equipo_id,empleado_id,fecha]
+);
 
-<h5>Lista de Equipos</h5>
+res.json({mensaje:"Equipo asignado"});
+});
 
-<table class="table">
 
-<thead>
+// SERVIDOR
 
-<tr>
-<th>Equipo</th>
-<th>Serial</th>
-<th>Área</th>
-<th>Acción</th>
-</tr>
-
-</thead>
-
-<tbody id="tablaEquipos">
-
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-
-<script>
-
-async function cargarEquipos(){
-
-let res = await fetch("/equipos")
-let data = await res.json()
-
-let tabla = document.getElementById("tablaEquipos")
-
-tabla.innerHTML=""
-
-data.forEach(e=>{
-
-tabla.innerHTML+=`
-
-<tr>
-
-<td>${e.nombre}</td>
-<td>${e.serial}</td>
-<td>${e.area}</td>
-
-<td>
-
-<button class="btn btn-danger btn-sm"
-onclick="eliminarEquipo('${e.id}')">
-
-Eliminar
-
-</button>
-
-</td>
-
-</tr>
-
-`
-
-})
-
-}
-
-
-
-async function agregarEquipo(){
-
-let nombre=document.getElementById("nombre").value
-let serial=document.getElementById("serial").value
-let area=document.getElementById("area").value
-let descripcion=document.getElementById("descripcion").value
-
-await fetch("/equipos",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-nombre,
-serial,
-area,
-descripcion
-})
-
-})
-
-cargarEquipos()
-
-}
-
-
-
-async function eliminarEquipo(id){
-
-await fetch("/equipos/"+id,{
-method:"DELETE"
-})
-
-cargarEquipos()
-
-}
-
-
-
-function logout(){
-
-localStorage.removeItem("token")
-
-window.location="index.html"
-
-}
-
-
-cargarEquipos()
-
-</script>
-
-</body>
-</html>
-
- 
-
-
-  
-
-
-
-
+app.listen(PORT,()=>{
+console.log("Servidor activo en puerto "+PORT);
+});
