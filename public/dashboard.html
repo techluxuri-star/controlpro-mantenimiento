@@ -1,72 +1,204 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Panel de Administración</title>
+<meta charset="UTF-8">
+<title>Panel de Administración</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+
+body{
+background:#f4f6f9;
+}
+
+.navbar{
+background:#0d6efd;
+}
+
+.card{
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+border:none;
+}
+
+</style>
+
 </head>
+
 <body>
 
-<h1>Panel de Administración</h1>
+<nav class="navbar navbar-dark">
+<div class="container-fluid">
 
-<h2>Agregar Equipo</h2>
+<span class="navbar-brand mb-0 h1">
+ControlPro - Mantenimiento
+</span>
 
-<form id="formEquipo">
-  <input type="text" name="nombre" placeholder="Nombre equipo" required>
-  <input type="text" name="serial" placeholder="Serial" required>
-  <input type="text" name="area" placeholder="Área" required>
-  <input type="text" name="descripcion" placeholder="Descripción">
-  <button type="submit">Guardar</button>
-</form>
+<button onclick="logout()" class="btn btn-light">
+Cerrar sesión
+</button>
 
-<h2>Lista de Equipos</h2>
-<ul id="listaEquipos"></ul>
+</div>
+</nav>
 
-<br>
-<button onclick="logout()">Cerrar sesión</button>
+
+<div class="container mt-4">
+
+<div class="row">
+
+<div class="col-md-4">
+
+<div class="card p-3">
+
+<h5>Agregar Equipo</h5>
+
+<input id="nombre" class="form-control mb-2" placeholder="Nombre equipo">
+
+<input id="serial" class="form-control mb-2" placeholder="Serial">
+
+<input id="area" class="form-control mb-2" placeholder="Área">
+
+<input id="descripcion" class="form-control mb-2" placeholder="Descripción">
+
+<button onclick="agregarEquipo()" class="btn btn-primary w-100">
+Guardar Equipo
+</button>
+
+</div>
+
+</div>
+
+
+<div class="col-md-8">
+
+<div class="card p-3">
+
+<h5>Lista de Equipos</h5>
+
+<table class="table">
+
+<thead>
+
+<tr>
+<th>Equipo</th>
+<th>Serial</th>
+<th>Área</th>
+<th>Acción</th>
+</tr>
+
+</thead>
+
+<tbody id="tablaEquipos">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
 
 <script>
-async function cargarEquipos() {
-  const res = await fetch("/api/equipos");
-  const equipos = await res.json();
 
-  const lista = document.getElementById("listaEquipos");
-  lista.innerHTML = "";
+async function cargarEquipos(){
 
-  equipos.forEach(e => {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <strong>${e.nombre}</strong> - ${e.serial} - ${e.area}
-      <button onclick="eliminar(${e.id})">Eliminar</button>
-    `;
-    lista.appendChild(li);
-  });
+let res = await fetch("/equipos")
+let data = await res.json()
+
+let tabla = document.getElementById("tablaEquipos")
+
+tabla.innerHTML=""
+
+data.forEach(e=>{
+
+tabla.innerHTML+=`
+
+<tr>
+
+<td>${e.nombre}</td>
+<td>${e.serial}</td>
+<td>${e.area}</td>
+
+<td>
+
+<button class="btn btn-danger btn-sm"
+onclick="eliminarEquipo('${e.id}')">
+
+Eliminar
+
+</button>
+
+</td>
+
+</tr>
+
+`
+
+})
+
 }
 
-document.getElementById("formEquipo").addEventListener("submit", async function(e) {
-  e.preventDefault();
 
-  const data = Object.fromEntries(new FormData(this));
 
-  await fetch("/api/equipos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+async function agregarEquipo(){
 
-  this.reset();
-  cargarEquipos();
-});
+let nombre=document.getElementById("nombre").value
+let serial=document.getElementById("serial").value
+let area=document.getElementById("area").value
+let descripcion=document.getElementById("descripcion").value
 
-async function eliminar(id) {
-  await fetch("/api/equipos/" + id, { method: "DELETE" });
-  cargarEquipos();
+await fetch("/equipos",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+nombre,
+serial,
+area,
+descripcion
+})
+
+})
+
+cargarEquipos()
+
 }
 
-function logout() {
-  window.location.href = "/logout";
+
+
+async function eliminarEquipo(id){
+
+await fetch("/equipos/"+id,{
+method:"DELETE"
+})
+
+cargarEquipos()
+
 }
 
-cargarEquipos();
+
+
+function logout(){
+
+localStorage.removeItem("token")
+
+window.location="index.html"
+
+}
+
+
+cargarEquipos()
+
 </script>
 
 </body>
